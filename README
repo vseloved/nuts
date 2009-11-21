@@ -1,0 +1,12 @@
+NUTS = Non-Unit Test Suite
+
+See system definition for rational
+See LICENSE for usage permissions
+
+There are currently 3 distinct systems and packages here:
+ * NUTS-CORE
+ * NUTS (for end-user)
+ * NUTS-CLSQL
+
+
+TODO: create self-test :)
