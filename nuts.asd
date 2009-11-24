@@ -3,7 +3,6 @@
 
 (in-package #:asdf)
 
-
 (defsystem #:nuts
   :name "Wrapper over NUTS-CORE for real-world usage"
   :version (0 1 0)

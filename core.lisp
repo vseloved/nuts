@@ -1,5 +1,5 @@
 ;;; NUTS-CORE
-;;; (c) Vsevolod Dyomkin, see LICENSE file for permissions
+;;; (c) Vsevolod Dyomkin, Oleksandr Manzyuk. see LICENSE file for permissions
 
 (in-package :nuts-core)
 
@@ -11,17 +11,13 @@
         "Output file for logging")
 
 (defun logg (form &optional (long-format t))
-  "Log the <_:arg form />'s return value to <_:var *log-output* /> file"
-  (let ((out (when/t *logg-out*
-               (open *logg-out* :direction :output
-                     :if-exists :append :if-does-not-exist :create))))
-    (let ((rez form))
-      (format out "~a~%"
-              (strcat (when long-format
-                        (format nil "~a | " (nth-value 1 (now))))
-                      rez))
-      (unwind-protect rez
-        (close out)))))
+ "Log the <_:arg form />'s return value to <_:var *log-output* /> file"
+ (if *logg-out*
+     (with-open-file (out *logg-out* :direction :output
+                                     :if-exists :append
+                                     :if-does-not-exist :create)
+       (format out "~:[~*~;~a | ~]~a~%" long-format (nth-value 1 (now)) form))
+     (format t "~:[~*~;~a | ~]~a~%" long-format (nth-value 1 (now)) form)))
 
 (defmacro check (pred &rest args)
   "Check, if the <_:arg pred /> is satisfied. Pred should be a literal name, ~
@@ -71,7 +67,7 @@ position"
   "Run <_:arg tests />, each one supplied as a list ~
 <_:pseudo (test-name args) />. If no <_:arg tests /> are provided, ~
 run all tests in <_:var *test-thunks* />"
-  (with-gensyms (names args i total errors rezs)
+  (with-gensyms (name names args largs i total err errors rez rezs)
     `(let* ((,names ',(if tests
                           (mapcar #`(car (mklist _)) tests)
                           (let (lst)
@@ -83,27 +79,35 @@ run all tests in <_:var *test-thunks* />"
             (,total (length ,names)))
        (logg (format nil "Running ~a test~:p..." ,total))
        (let* ((,i 0)
-              ,errors
-              (,rezs (mapcar (lambda (name args)
+              (,errors ())
+              (,rezs (mapcar (lambda (,name ,largs)
                                (logg (format nil "test #~a: ~a~#[;~a~]"
-                                             (incf ,i) name args))
-                               (handler-case
-                                   (if-it (gethash name *test-thunks*)
-                                          (multiple-value-bind (rez err)
-                                              (if args (apply it args)
-                                                  (funcall it))
-                                            (push err ,errors)
-                                            rez)
-                                          (progn
-                                            (logg (format nil "No such test: ~a~%"
-                                                          name))
-                                            nil))
-                                 (error (e) (unless *catch-errors?* (error e))
-                                            (logg (format nil "ERROR ~a~%"
-                                                          (type-of e))
-                                                  nil)
-                                            (push e ,errors))))
-                             ,names ,args)))
+                                             (incf ,i) ,name ,largs))
+                               (let ((,rez
+                                      (handler-case
+                                          (if-it (gethash ,name *test-thunks*)
+                                                 (multiple-value-bind
+                                                       (,rez ,err)
+                                                     (if ,largs
+                                                         (apply it ,largs)
+                                                         (funcall it))
+                                                   (push ,err ,errors)
+                                                   ,rez)
+                                                 (progn
+                                                   (logg (format nil
+                                                                 "No such test: ~a~%"
+                                                                 ,name))
+                                                   nil))
+                                        (error (,err)
+                                          (unless *catch-errors?* (error ,err))
+                                          (logg (format nil "ERROR ~a~%"
+                                                        (type-of ,err))
+                                                nil)
+                                          (push ,err ,errors)))))
+                                 (logg (format nil "test #~a result: ~a~%"
+                                               ,i ,rez))
+                                 ,rez))
+                      ,names ,args)))
          (values ,rezs ,errors)))))
 
 (locally-disable-literal-syntax :sharp-backq)

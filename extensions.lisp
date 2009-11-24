@@ -54,17 +54,18 @@ in 1 <_:arg fixture-def />."
                           (loop :for sym :in def :until (keywordp sym)
                                 :collect sym))
                     (:for stream := (gensym "STREAM"))
-                    (:append (cons `(,stream ,(when path `(open ,path)))
-                                   (mapcar 
-                                    #``(,_ (load-fixture
-                                            ,(string _)
-                                            ,type
-                                            ,(if path stream
-                                                 `(open ,(format nil
-                                                                 "~a/~(~a~).~a"
-                                                                 base-path
-                                                                 _
-                                                                 (get-fixture-ext type))))))
+                    (:append
+                     (cons `(,stream ,(when path `(open ,path)))
+                           (mapcar
+                            #``(,_ (load-fixture
+                                    ,(string _)
+                                    ,type
+                                    ,(if path stream
+                                         `(open
+                                           ,(format nil "~a/~(~a~).~a"
+                                                    base-path
+                                                    _
+                                                    (get-fixture-ext type))))))
                                            names)))))
        ,@body)))
 
