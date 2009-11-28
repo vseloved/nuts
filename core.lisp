@@ -10,14 +10,22 @@
 (defvar *logg-out* #p"nuts.log"
         "Output file for logging")
 
-(defun logg (form &optional (long-format t))
- "Log the <_:arg form />'s return value to <_:var *log-output* /> file"
- (if *logg-out*
-     (with-open-file (out *logg-out* :direction :output
-                                     :if-exists :append
-                                     :if-does-not-exist :create)
-       (format out "~:[~*~;~a | ~]~a~%" long-format (nth-value 1 (now)) form))
-     (format t "~:[~*~;~a | ~]~a~%" long-format (nth-value 1 (now)) form)))
+(defun logg (long-format-p control-string &rest args)
+  "Print log message formatted according to <_:arg control-string /> ~
+and <_:arg args>.  The destination of the message depends on the value ~
+of <_:var *logg-out* />: if is NIL, the message is printed to the ~
+standard output; otherwise, <_:var *logg-out* /> must be a pathname, ~
+in which case the message is appended to the corresponding file (the ~
+file is created if it does not exist).  If <_arg: long-format-p /> is ~
+T, the message is prepended with the execution time."
+  (with-open-stream (out (if *logg-out*
+                             (open *logg-out*
+                                   :direction         :output
+                                   :if-exists         :append
+                                   :if-does-not-exist :create)
+                             (make-broadcast-stream *standard-output*)))
+    (format out "~:[~*~;~a | ~]~?~%"
+            long-format-p (nth-value 1 (now)) control-string args)))
 
 (defmacro check (pred &rest args)
   "Check, if the <_:arg pred /> is satisfied. Pred should be a literal name, ~
@@ -25,10 +33,8 @@ not a function object.
 Log the result."
   (with-gensyms (rez)
     `(let ((,rez (funcall ',pred ,@args)))
-       (logg (format nil "~a ~{~a ~}-> ~a~%"
-                     ',pred '(,@args) ,rez) nil)
+       (logg nil "~a ~{~a ~}-> ~a~%" ',pred ',args ,rez)
        (values ,rez ',args))))
-
 
 ;; tests
 
@@ -45,7 +51,7 @@ tests (only inside a test), so use with caution."
      (when (gethash ',name *test-thunks*)
        (warn "Redefining test ~a" ',name))
      (setf (gethash ',name *test-thunks*)
-           (lambda (,@args)
+           (lambda ,args
              (cumulative-and
               ,@(mapcar #`(if-it (when (listp _)
                                    ;; test referenced like a function
@@ -70,44 +76,35 @@ run all tests in <_:var *test-thunks* />"
   (with-gensyms (name names args largs i total err errors rez rezs)
     `(let* ((,names ',(if tests
                           (mapcar #`(car (mklist _)) tests)
-                          (let (lst)
-                            (maphash (lambda (k v) (push k lst)) *test-thunks*)
-                            lst)))
+                          (hash-table-keys *test-thunks*)))
             (,args (list ,@(if tests (mapcar #``(list ,@(cdr (mklist _))) tests)
                                (loop :repeat (hash-table-count *test-thunks*)
                                      :collect nil))))
             (,total (length ,names)))
-       (logg (format nil "Running ~a test~:p..." ,total))
+       (logg t "Running ~a test~:p..." ,total)
        (let* ((,i 0)
               (,errors ())
               (,rezs (mapcar (lambda (,name ,largs)
-                               (logg (format nil "test #~a: ~a~#[;~a~]"
-                                             (incf ,i) ,name ,largs))
+                               (logg t "test #~a: ~a~#[;~a~]"
+                                     (incf ,i) ,name ,largs)
                                (let ((,rez
                                       (handler-case
                                           (if-it (gethash ,name *test-thunks*)
                                                  (multiple-value-bind
                                                        (,rez ,err)
-                                                     (if ,largs
-                                                         (apply it ,largs)
-                                                         (funcall it))
+                                                     (apply it ,largs)
                                                    (push ,err ,errors)
                                                    ,rez)
                                                  (progn
-                                                   (logg (format nil
-                                                                 "No such test: ~a~%"
-                                                                 ,name))
+                                                   (logg t "No such test: ~a~%" ,name)
                                                    nil))
                                         (error (,err)
                                           (unless *catch-errors?* (error ,err))
-                                          (logg (format nil "ERROR ~a~%"
-                                                        (type-of ,err))
-                                                nil)
+                                          (logg nil  "ERROR ~a~%" (type-of ,err))
                                           (push ,err ,errors)))))
-                                 (logg (format nil "test #~a result: ~a~%"
-                                               ,i ,rez))
+                                 (logg t "test #~a result: ~a~%" ,i ,rez)
                                  ,rez))
-                      ,names ,args)))
+                             ,names ,args)))
          (values ,rezs ,errors)))))
 
 (locally-disable-literal-syntax :sharp-backq)

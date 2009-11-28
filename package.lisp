@@ -47,7 +47,7 @@
            #:check-funcall
            #:errs))
 
-(eval-always
+(rutils.user:eval-always
   (rutils.user:export-exported-symbols "NUTS-CORE" "NUTS")
   (pushnew :nuts *features*))
 
