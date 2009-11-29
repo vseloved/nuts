@@ -8,7 +8,8 @@
         #:rutils.usr)
   (:export ;; basic ops
            #:*logg-out*
-           #:logg
+           #:logf
+           #:logp
            #:check
 
            ;; test definition

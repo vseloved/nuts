@@ -10,22 +10,45 @@
 (defvar *logg-out* #p"nuts.log"
         "Output file for logging")
 
-(defun logg (long-format-p control-string &rest args)
+(defmacro with-log-file ((var) &body body)
+  `(with-open-stream (,var (if *logg-out*
+                               (open *logg-out*
+                                     :direction         :output
+                                     :if-exists         :append
+                                     :if-does-not-exist :create)
+                               (make-broadcast-stream *standard-output*)))
+     ,@body))
+
+(defun logf (long-format-p control-string &rest args)
   "Print log message formatted according to <_:arg control-string /> ~
 and <_:arg args>.  The destination of the message depends on the value ~
 of <_:var *logg-out* />: if is NIL, the message is printed to the ~
 standard output; otherwise, <_:var *logg-out* /> must be a pathname, ~
 in which case the message is appended to the corresponding file (the ~
 file is created if it does not exist).  If <_arg: long-format-p /> is ~
-T, the message is prepended with the execution time."
-  (with-open-stream (out (if *logg-out*
-                             (open *logg-out*
-                                   :direction         :output
-                                   :if-exists         :append
-                                   :if-does-not-exist :create)
-                             (make-broadcast-stream *standard-output*)))
-    (format out "~:[~*~;~a | ~]~?~%"
+T, the message is prepended with the execution time. Returns NIL."
+  (with-log-file (out)
+    (format out "~:[~*~;~a | ~]~?"
             long-format-p (nth-value 1 (now)) control-string args)))
+
+(defun logp (object)
+  "Print <_:arg object /> to the log file designated by the pathname ~
+<_:var *logg-out* /> or to the standard output if <_:var *logg-out* /> ~
+is NIL. Returns <_:arg object />."
+  (with-log-file (out)
+    (print object out)))
+
+(defmacro monitor (form)
+  "Evaluate <_:arg form /> logfing the result.  If evaluation raises
+an error, log and reraise it."
+  (with-gensyms (e values)    
+    `(handler-case ,form
+       (error (,e)
+         (logf nil "ERROR ~a~%" ,e)
+         (error ,e))
+       (:no-error (&rest ,values)
+         (logf t "~a => ~{~a~^ ~}~%" ',form ,values)
+         (values-list ,values)))))
 
 (defmacro check (pred &rest args)
   "Check, if the <_:arg pred /> is satisfied. Pred should be a literal name, ~
@@ -33,7 +56,7 @@ not a function object.
 Log the result."
   (with-gensyms (rez)
     `(let ((,rez (funcall ',pred ,@args)))
-       (logg nil "~a ~{~a ~}-> ~a~%" ',pred ',args ,rez)
+       (logf nil "~a ~{~a ~}-> ~a~%" ',pred ',args ,rez)
        (values ,rez ',args))))
 
 ;; tests
@@ -81,11 +104,11 @@ run all tests in <_:var *test-thunks* />"
                                (loop :repeat (hash-table-count *test-thunks*)
                                      :collect nil))))
             (,total (length ,names)))
-       (logg t "Running ~a test~:p..." ,total)
+       (logf t "Running ~a test~:p..." ,total)
        (let* ((,i 0)
               (,errors ())
               (,rezs (mapcar (lambda (,name ,largs)
-                               (logg t "test #~a: ~a~#[;~a~]"
+                               (logf t "test #~a: ~a~#[;~a~]"
                                      (incf ,i) ,name ,largs)
                                (let ((,rez
                                       (handler-case
@@ -96,13 +119,13 @@ run all tests in <_:var *test-thunks* />"
                                                    (push ,err ,errors)
                                                    ,rez)
                                                  (progn
-                                                   (logg t "No such test: ~a~%" ,name)
+                                                   (logf t "No such test: ~a~%" ,name)
                                                    nil))
                                         (error (,err)
                                           (unless *catch-errors?* (error ,err))
-                                          (logg nil  "ERROR ~a~%" (type-of ,err))
+                                          (logf nil  "ERROR ~a~%" (type-of ,err))
                                           (push ,err ,errors)))))
-                                 (logg t "test #~a result: ~a~%" ,i ,rez)
+                                 (logf t "test #~a result: ~a~%" ,i ,rez)
                                  ,rez))
                              ,names ,args)))
          (values ,rezs ,errors)))))
