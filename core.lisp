@@ -7,12 +7,12 @@
 
 ;; basic ops
 
-(defvar *logg-out* #p"nuts.log"
+(defvar *log-out* #p"nuts.log"
         "Output file for logging")
 
 (defmacro with-log-file ((var) &body body)
-  `(with-open-stream (,var (if *logg-out*
-                               (open *logg-out*
+  `(with-open-stream (,var (if *log-out*
+                               (open *log-out*
                                      :direction         :output
                                      :if-exists         :append
                                      :if-does-not-exist :create)
@@ -22,18 +22,19 @@
 (defun logf (long-format-p control-string &rest args)
   "Print log message formatted according to <_:arg control-string /> ~
 and <_:arg args>.  The destination of the message depends on the value ~
-of <_:var *logg-out* />: if is NIL, the message is printed to the ~
-standard output; otherwise, <_:var *logg-out* /> must be a pathname, ~
+of <_:var *log-out* />: if is NIL, the message is printed to the ~
+standard output; otherwise, <_:var *log-out* /> must be a pathname, ~
 in which case the message is appended to the corresponding file (the ~
 file is created if it does not exist).  If <_arg: long-format-p /> is ~
 T, the message is prepended with the execution time. Returns NIL."
   (with-log-file (out)
     (format out "~:[~*~;~a | ~]~?"
-            long-format-p (nth-value 1 (now)) control-string args)))
+            long-format-p
+            (nth-value 1 (now)) control-string args)))
 
 (defun logp (object)
   "Print <_:arg object /> to the log file designated by the pathname ~
-<_:var *logg-out* /> or to the standard output if <_:var *logg-out* /> ~
+<_:var *log-out* /> or to the standard output if <_:var *log-out* /> ~
 is NIL. Returns <_:arg object />."
   (with-log-file (out)
     (print object out)))
@@ -96,7 +97,7 @@ position"
   "Run <_:arg tests />, each one supplied as a list ~
 <_:pseudo (test-name args) />. If no <_:arg tests /> are provided, ~
 run all tests in <_:var *test-thunks* />"
-  (with-gensyms (name names args largs i total err errors rez rezs)
+  (with-gensyms (name names args largs i total err errors rez rezs failed)
     `(let* ((,names ',(if tests
                           (mapcar #`(car (mklist _)) tests)
                           (hash-table-keys *test-thunks*)))
@@ -104,11 +105,11 @@ run all tests in <_:var *test-thunks* />"
                                (loop :repeat (hash-table-count *test-thunks*)
                                      :collect nil))))
             (,total (length ,names)))
-       (logf t "Running ~a test~:p..." ,total)
+       (logf t "Running ~a test~:p...~%" ,total)
        (let* ((,i 0)
               (,errors ())
               (,rezs (mapcar (lambda (,name ,largs)
-                               (logf t "test #~a: ~a~#[;~a~]"
+                               (logf t "test #~a: ~a~#[;~a~]~%"
                                      (incf ,i) ,name ,largs)
                                (let ((,rez
                                       (handler-case
@@ -128,8 +129,12 @@ run all tests in <_:var *test-thunks* />"
                                  (logf t "test #~a result: ~a~%" ,i ,rez)
                                  ,rez))
                              ,names ,args)))
+         (let ((,failed (mapfil (let ((,i 0))
+                                  #`((incf ,i)
+                                     (unless (eq _ t) ,i)))
+                                ,rezs)))
+           (logf t "Total tests run: ~a    Failed ~a: ~{#~a ~}~%"
+                 ,total (length ,failed) ,failed))
          (values ,rezs ,errors)))))
-
-(locally-disable-literal-syntax :sharp-backq)
 
 ;;; end

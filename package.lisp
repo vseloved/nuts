@@ -7,7 +7,7 @@
   (:use :common-lisp
         #:rutils.usr)
   (:export ;; basic ops
-           #:*logg-out*
+           #:*log-out*
            #:logf
            #:logp
            #:check
