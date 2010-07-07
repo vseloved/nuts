@@ -5,10 +5,10 @@
 
 (defsystem #:nuts
   :name "Wrapper over NUTS-CORE for real-world usage"
-  :version '(0 2 1)
-;  :author "Vsevolod Dyomkin <vseloved@gmail.com>"
-;  :maintainer "Vsevolod Dyomkin <vseloved@gmail.com>"
-;  :licence "MIT"
+  :version '(0 3 0)
+  :author "Vsevolod Dyomkin <vseloved@gmail.com>"
+  :maintainer "Vsevolod Dyomkin <vseloved@gmail.com>"
+  :licence "MIT"
   :serial t
   :components ((:file "package")
                (:file "predicates")
