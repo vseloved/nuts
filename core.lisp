@@ -57,7 +57,7 @@ not a function object.
 Log the result."
   (with-gensyms (rez)
     `(let ((,rez (funcall ',pred ,@args)))
-       (logf nil "~a ~{~a ~}-> ~a~%" ',pred ',args ,rez)
+       (logf nil "  ~:[FAIL~; OK ~]   | ~a ~{~a ~}~%" ,rez ',pred ',args)
        (values ,rez ',args))))
 
 ;; tests
@@ -105,6 +105,7 @@ run all tests in <_:var *test-thunks* />"
                                (loop :repeat (hash-table-count *test-thunks*)
                                      :collect nil))))
             (,total (length ,names)))
+       (with-log-file (out) (terpri out))
        (logf t "Running ~a test~:p...~%" ,total)
        (let* ((,i 0)
               (,errors ())
