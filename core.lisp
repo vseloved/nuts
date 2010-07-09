@@ -134,8 +134,8 @@ run all tests in <_:var *test-thunks* />"
                                   #`((incf ,i)
                                      (unless (eq _ t) ,i)))
                                 ,rezs)))
-           (logf t "Total tests run: ~a    Failed ~a: ~{#~a ~}~%"
-                 ,total (length ,failed) ,failed))
+           (logf t "Total tests run: ~a. ~:[No errors!~;Failed ~a: ~{#~a ~}~]~%"
+                 ,total ,failed (length ,failed) ,failed))
          (values ,rezs ,errors)))))
 
 ;;; end
