@@ -22,7 +22,7 @@ Besides, collects all non-T values in a second return value"
            (unless (eq ,cur t)
              (push ,cur ,non-ts))))
        (if ,non-ts
-           (values nil (nreverse ,non-ts))
+           (values nil (reverse ,non-ts))
            t))))
 
 (defmacro now ()

@@ -7,8 +7,11 @@
 
 ;; basic ops
 
-(defvar *log-out* #p"nuts.log"
-        "Output file for logging")
+(defparameter *log-out* #p"nuts.log"
+              "Output file for logging")
+
+(defparameter *info-out* t
+  "Stream for printing information (start/end of testing, test result etc).")
 
 (defmacro with-log-file ((var) &body body)
   `(with-open-stream (,var (if *log-out*
@@ -40,9 +43,9 @@ is NIL. Returns <_:arg object />."
     (print object out)))
 
 (defmacro monitor (form)
-  "Evaluate <_:arg form /> logfing the result.  If evaluation raises
+  "Evaluate <_:arg form /> logf-ing the result.  If evaluation raises
 an error, log and reraise it."
-  (with-gensyms (e values)    
+  (with-gensyms (e values)
     `(handler-case ,form
        (error (,e)
          (logf nil "ERROR ~a~%" ,e)
@@ -52,8 +55,8 @@ an error, log and reraise it."
          (values-list ,values)))))
 
 (defmacro check (pred &rest args)
-  "Check, if the <_:arg pred /> is satisfied. Pred should be a literal name, ~
-not a function object.
+  "Check, if the <_:arg pred /> is satisfied.
+Pred should be a literal name, not a function object.
 Log the result."
   (with-gensyms (rez)
     `(let ((,rez (funcall ',pred ,@args)))
@@ -93,7 +96,7 @@ position"
 (defvar *catch-errors?* t
   "Intercept error signals from tests?")
 
-(defmacro run-test (&rest tests)
+(defmacro run-tests (&rest tests)
   "Run <_:arg tests />, each one supplied as a list ~
 <_:pseudo (test-name args) />. If no <_:arg tests /> are provided, ~
 run all tests in <_:var *test-thunks* />"
@@ -106,35 +109,46 @@ run all tests in <_:var *test-thunks* />"
                                      :collect nil))))
             (,total (length ,names)))
        (with-log-file (out) (terpri out))
-       (logf t "Running ~a test~:p...~%" ,total)
+       (terpri)
+
+       (logf t "Running ~A test~:P: " ,total)
+       (format *info-out* "Running ~A test~:P: " ,total)
+
        (let* ((,i 0)
               (,errors ())
               (,rezs (mapcar (lambda (,name ,largs)
-                               (logf t "test #~a: ~a~#[;~a~]~%"
+                               (logf t "test #~A: ~A~#[;~A~]~%"
                                      (incf ,i) ,name ,largs)
                                (let ((,rez
                                       (handler-case
                                           (if-it (gethash ,name *test-thunks*)
-                                                 (multiple-value-bind
-                                                       (,rez ,err)
+                                                 (mv-bind (,rez ,err)
                                                      (apply it ,largs)
                                                    (push ,err ,errors)
+                                                   (unless (eq ,rez T)
+                                                     (format *info-out* "F"))
                                                    ,rez)
                                                  (progn
-                                                   (logf t "No such test: ~a~%" ,name)
+                                                   (logf t "No such test: ~A~%"
+                                                         ,name)
+                                                   (format *info-out* "F")
                                                    nil))
                                         (error (,err)
                                           (unless *catch-errors?* (error ,err))
-                                          (logf nil  "ERROR ~a~%" (type-of ,err))
+                                          (logf nil "ERROR ~A~%" (type-of ,err))
+                                          (format *info-out* "E")
                                           (push ,err ,errors)))))
-                                 (logf t "test #~a result: ~a~%" ,i ,rez)
+                                 (logf t "test #~A result: ~A~%" ,i ,rez)
+                                 (when (eq ,rez T)
+                                   (format *info-out* "."))
                                  ,rez))
                              ,names ,args)))
          (let ((,failed (mapfil (let ((,i 0))
                                   #`((incf ,i)
                                      (unless (eq _ t) ,i)))
                                 ,rezs)))
-           (logf t "Total tests run: ~a. ~:[No errors!~;Failed ~a: ~{#~a ~}~]~%"
+           (format *info-out* " OK: ~A/~A~%~%" (- ,total (length ,failed)) ,total)
+           (logf t "Total tests run: ~A. ~:[No errors!~;Failed ~A: ~{#~A ~}~]~%"
                  ,total ,failed (length ,failed) ,failed))
          (values ,rezs ,errors)))))
 

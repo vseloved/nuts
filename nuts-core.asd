@@ -6,7 +6,7 @@
 
 (defsystem #:nuts-core
   :name "Non-Unit Test Suite"
-  :version '(0 1 0)
+  :version "0.2.0"
   :author "Vsevolod Dyomkin <vseloved@gmail.com>"
   :maintainer "Vsevolod Dyomkin <vseloved@gmail.com>"
   :licence "MIT"

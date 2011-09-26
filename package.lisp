@@ -16,20 +16,20 @@
            #:*test-thunks*
            #:*catch-errors?*
            #:deftest
-           #:run-test
+           #:run-tests
 
            ;; fixtures
            #:load-fixture
            #:get-fixture-ext
            #:with-fixtures
-           
+
            ;; teardown
            #:with-teardown
            #:with-context
-            
+
            ;; interception
            #:with-inter
-            
+
            ;; utils
            #:true
            #:cumulative-and))

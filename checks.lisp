@@ -5,8 +5,6 @@
 (in-package :nuts)
 
 
-(locally-enable-literal-syntax :sharp-backq)
-
 (defmacro check-t (form)
   "Checks, if <_:arg form />'s return value is non-NIL
 and in this case returns T instead of a it"
@@ -18,7 +16,10 @@ if this list is empty) are signaled. Errors are not re-signalled"
   `(handler-case
        (progn ,form
               nil)
-     ,@(mapcar #``(,_ (c) (declare (ignore c)) t)
+     ,@(mapcar (lambda (error-type)
+                 `(,error-type (c)
+                    (declare (ignore c))
+                    (check eql ',error-type ',error-type)))
                (or error-types '(error)))))
 
 (defmacro check-funcall (form fun-form)
