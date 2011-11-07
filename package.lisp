@@ -4,8 +4,7 @@
 (in-package :cl-user)
 
 (defpackage #:nuts-core
-  (:use :common-lisp
-        #:rutils.usr)
+  (:use :common-lisp #:rutil)
   (:export ;; basic ops
            #:*log-out*
            #:logf
@@ -35,7 +34,7 @@
            #:cumulative-and))
 
 (defpackage #:nuts
-  (:use :common-lisp #:rutils.usr #:nuts-core)
+  (:use :common-lisp #:rutil #:nuts-core)
   (:export ;; predicates
            #:inside
            #:inside-test
