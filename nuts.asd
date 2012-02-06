@@ -5,7 +5,7 @@
 
 (defsystem #:nuts
   :name "Wrapper over NUTS-CORE for real-world usage"
-  :version "0.4.1"
+  :version "0.5.0"
   :author "Vsevolod Dyomkin <vseloved@gmail.com>"
   :maintainer "Vsevolod Dyomkin <vseloved@gmail.com>"
   :licence "MIT"

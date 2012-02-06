@@ -2,17 +2,15 @@
 ;;; (c) Vsevolod Dyomkin, see LICENSE file for permissions
 
 (in-package :nuts-core)
-
-(locally-enable-literal-syntax :sharp-backq)
+(named-readtables:in-readtable rutils-readtable)
 
 
 (defun true (form)
-  "Opposite to <_:fun null /> (so will return T and not the value of
-a form, when it's non-null)"
+  "Opposite to NULL (so will return T and not the value of a form, when it's non-null)"
   (not (null form)))
 
 (defmacro cumulative-and (&rest args)
-  "Like <_:fun and />, but treats only T as true and everything else as NIL.
+  "Like AND, but treats only T as true and everything else as NIL.
 Besides, collects all non-T values in a second return value"
   (with-gensyms (cur non-ts rezs)
     `(let ((,rezs `(,,@args))

@@ -2,8 +2,7 @@
 ;;; (c) Vsevolod Dyomkin, Oleksandr Manzyuk. see LICENSE file for permissions
 
 (in-package :nuts-core)
-
-(locally-enable-literal-syntax :sharp-backq)
+(named-readtables:in-readtable rutils-readtable)
 
 ;; basic ops
 
@@ -75,23 +74,23 @@ Meta-tests (test suites) can be created just by calling some tests inside ~
 the other one. Thus it is possible to shadow real functions and macros with ~
 tests (only inside a test), so use with caution."
   `(progn
-     (when (gethash ',name *test-thunks*)
+     (when (gethash ,(mkeyw name) *test-thunks*)
        (warn "Redefining test ~a" ',name))
-     (setf (gethash ',name *test-thunks*)
+     (setf (gethash ,(mkeyw name) *test-thunks*)
            (lambda ,args
              (cumulative-and
-              ,@(mapcar #`(if-it (when (listp _)
+              ,@(mapcar #`(if-it (when (listp %)
                                    ;; test referenced like a function
-                                   (gethash (car _) *test-thunks*))
+                                   (gethash (mkeyw (car %)) *test-thunks*))
                                  (progn
                                    (warn "Used test ~a in function call ~
 position"
-                                         (car _))
-                                   `(funcall ,it ,@(cdr _)))
-                                 _)
+                                         (car %))
+                                   `(funcall ,it ,@(cdr %)))
+                                 %)
                         body))))
-     (values ',name
-             (to-string *test-thunks*))))
+     (values ,(mkeyw name)
+             *test-thunks*)))
 
 (defvar *catch-errors?* t
   "Intercept error signals from tests?")
@@ -102,9 +101,9 @@ position"
 run all tests in <_:var *test-thunks* />"
   (with-gensyms (name names args largs i total err errors rez rezs failed)
     `(let* ((,names ',(if tests
-                          (mapcar #`(car (mklist _)) tests)
-                          (hash-table-keys *test-thunks*)))
-            (,args (list ,@(if tests (mapcar #``(list ,@(cdr (mklist _))) tests)
+                          (mapcar #`(mkeyw (car (mklist %))) tests)
+                          (ht-keys *test-thunks*)))
+            (,args (list ,@(if tests (mapcar #``(list ,@(cdr (mklist %))) tests)
                                (loop :repeat (hash-table-count *test-thunks*)
                                      :collect nil))))
             (,total (length ,names)))
@@ -125,7 +124,7 @@ run all tests in <_:var *test-thunks* />"
                                                  (mv-bind (,rez ,err)
                                                      (apply it ,largs)
                                                    (push ,err ,errors)
-                                                   (unless (eq ,rez T)
+                                                   (unless (eq ,rez t)
                                                      (format *info-out* "F"))
                                                    ,rez)
                                                  (progn
@@ -139,15 +138,15 @@ run all tests in <_:var *test-thunks* />"
                                           (format *info-out* "E")
                                           (push ,err ,errors)))))
                                  (logf t "test #~A result: ~A~%" ,i ,rez)
-                                 (when (eq ,rez T)
+                                 (when (eq ,rez t)
                                    (format *info-out* "."))
                                  ,rez))
                              ,names ,args)))
-         (let ((,failed (mapfil (let ((,i 0))
-                                  #`((incf ,i)
-                                     (unless (eq _ t) ,i)))
-                                ,rezs)))
-           (format *info-out* " OK: ~A/~A~%~%" (- ,total (length ,failed)) ,total)
+         (let ((,failed (remove-if-not (let ((,i 0))
+                                         #`((incf ,i)
+                                            (unless (eq % t) ,i)))
+                                       ,rezs)))
+           (format *info-out* "~%OK: ~A/~A~%~%" (- ,total (length ,failed)) ,total)
            (logf t "Total tests run: ~A. ~:[No errors!~;Failed ~A: ~{#~A ~}~]~%"
                  ,total ,failed (length ,failed) ,failed))
          (values ,rezs ,errors)))))

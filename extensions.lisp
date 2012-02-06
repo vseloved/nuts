@@ -2,8 +2,7 @@
 ;;; (c) Vsevolod Dyomkin, see LICENSE file for permissions
 
 (in-package :nuts-core)
-
-(locally-enable-literal-syntax :sharp-backq)
+(named-readtables:in-readtable rutils-readtable)
 
 ;;; fixtures
 
@@ -56,17 +55,16 @@ in 1 <_:arg fixture-def />."
                     (:for stream := (gensym "STREAM"))
                     (:append
                      (cons `(,stream ,(when path `(open ,path)))
-                           (mapcar
-                            #``(,_ (load-fixture
-                                    ,(string _)
-                                    ,type
-                                    ,(if path stream
-                                         `(open
-                                           ,(format nil "~a/~(~a~).~a"
-                                                    base-path
-                                                    _
-                                                    (get-fixture-ext type))))))
-                                           names)))))
+                           (mapcar #``(,% (load-fixture
+                                           ,(string %)
+                                           ,type
+                                           ,(if path stream
+                                                `(open
+                                                  ,(format nil "~a/~(~a~).~a"
+                                                           base-path
+                                                           %
+                                                           (get-fixture-ext type))))))
+                            names)))))
        ,@body)))
 
 

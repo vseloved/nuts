@@ -29,6 +29,4 @@ if this list is empty) are signaled. Errors are not re-signalled"
             ,form)
           ,fun-form))
 
-(locally-disable-literal-syntax :sharp-backq)
-
 ;;; end

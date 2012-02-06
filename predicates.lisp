@@ -2,8 +2,7 @@
 ;;; (c) Vsevolod Dyomkin, see LICENSE file for permissions
 
 (in-package :nuts)
-
-(locally-enable-literal-syntax :sharp-backq)
+(named-readtables:in-readtable rutils-readtable)
 
 
 ;; insideness
@@ -23,18 +22,17 @@ for the appropriate <_:arg seq />uence type")
   (:method (seq &key)
     (error "Not implemeted for sequence type ~a" (type-of seq)))
   (:method ((seq string) &key)
-    #`(true (cl-ppcre:scan _ seq)))
+    #`(true (cl-ppcre:scan % seq)))
   (:method ((seq list) &key key test)
     (labels ((inside-list (item lst &key key test)
-               (if (funcall (if test test #'eql)
+               (or (funcall (if test test #'eql)
                             item
                             (if key (mapcar key lst) lst))
-                   t
                    (when (listp lst)
                      (dolist (sub lst)
                        (when (inside-list item sub :key key :test test)
                          (return t)))))))
-      #`(inside-list _ seq :key key :test test))))
+      #`(inside-list % seq :key key :test test))))
 
 (defun inside/equalp (seq items)
   "<_:fun inside /> with <_:std EQUALP /> test"
@@ -52,7 +50,7 @@ for this object class.")
     "If objs are of different classes the result is NIL."
     (let* ((cls (class-of obj1))
            (id-getter (or id-getter
-                          #`(slot-value _ (intern "ID"
+                          #`(slot-value % (intern "ID"
                                                   (symbol-package
                                                    (class-name cls)))))))
       (when (eql cls (class-of obj2))

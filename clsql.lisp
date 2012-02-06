@@ -2,8 +2,7 @@
 ;;; (c) Vsevolod Dyomkin, see LICENSE file for permissions
 
 (in-package :nuts-clsql)
-
-(locally-enable-literal-syntax :sharp-backq)
+(named-readtables:in-readtable rutils-readtable)
 
 ;; predicates
 
@@ -18,8 +17,8 @@ If objs are of different classes the result is NIL."
           (apply #'every test
                  (mapcar (lambda (obj)
                            (mapcar #`(slot-value obj
-                                                 (closer-mop:slot-definition-name _))
-                                   (remove-if #`(eq (closer-mop:slot-definition-name _)
+                                                 (closer-mop:slot-definition-name %))
+                                   (remove-if #`(eq (closer-mop:slot-definition-name %)
                                                     'CLSQL-SYS::VIEW-DATABASE)
                                     (closer-mop:class-slots (class-of obj)))))
                          (list obj1 obj2)))
